@@ -13,6 +13,10 @@ the original project by Chris Mower (https://github.com/kintekobo/millcode).
 #define PIN_DIRECTION       4
 #define PIN_ENABLE          5
 
+// LCD pins
+#define PIN_LCD_SDA         
+#define PIN_LCD_CLK         
+
 // Input pins
 #define PIN_FAST_LEFT       13
 #define PIN_SLOW_LEFT       12
@@ -38,5 +42,13 @@ the original project by Chris Mower (https://github.com/kintekobo/millcode).
 
 // The rate of the "rapid move" in micrometers/second
 #define FEEDRATE_RAPID_UM_SEC 7000
+
+// The rate change adjusted by each detent of the rotary encoder
+#define FEEDRATE_ADJUST_STEP_UM_SEC 50
+
+// Custom character indexes for use on the LCD
+#define LCD_CHAR_ARROW_RIGHT 0
+#define LCD_CHAR_ARROW_LEFT 1
+#define LCD_CHAR_STOP 2
 
 #endif
