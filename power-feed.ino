@@ -5,8 +5,10 @@
 #include "controls.h"
 
 /*
-power-feed - An Arduino-based single-axis milling machine power feed controller.
-Ported from Chris Mower's original millcode project (https://github.com/kintekobo/millcode).
+    power-feed - An Arduino-based single-axis milling machine power feed controller.
+    Ported from Chris Mower's original millcode project (https://github.com/kintekobo/millcode).
+
+    (C) Damien Walsh <me@damow.net>
 */
 
 // Initialise LCD
@@ -21,27 +23,28 @@ uint8_t char_stop[8] = { 0x00, 0x00, 0x0E, 0x1F, 0x1F, 0x1F, 0x0E, 0x00 };
  * Define the possible movement directions.
  */
 typedef enum {
-    DIRECTION_LEFT,
-    DIRECTION_RIGHT
+    DIRECTION_CW,
+    DIRECTION_CCW
 } direction_t;
 
 /**
  * Define the possible movement modes.
  */
 typedef enum {
-    MODE_STOP,
     MODE_PRECISION,
-    MODE_RAPID
+    MODE_RAPID,
+    MODE_STOP,
+    MODE_ENDSTOP
 } mode_t;
 
-// The precision feedrate (um/sec)
+// The desired precision feedrate (um/sec)
 // The "rapid" feedrate is fixed and defined in defs.h
-volatile unsigned long desired_feedrate_precision_um_sec = 1000;
+volatile unsigned long desired_feedrate_precision_um_sec = FEEDRATE_PRECISION_DEFAULT_UM_SEC;
 
-// The current direction (default LEFT)
-volatile direction_t desired_direction = DIRECTION_LEFT;
+// The desired direction (default CW)
+volatile direction_t desired_direction = DIRECTION_CW;
 
-// The current mode (default STOP)
+// The desired mode (default STOP)
 volatile mode_t desired_mode = MODE_STOP;
 
 // The reason why the timer has been automatically stopped
@@ -87,24 +90,10 @@ void setup()
 }
 
 /**
- * Our main loop inspecs the deisred state (desired_ variables) and configures the timer/output pins if required.
- * All operational halt (stop button, endstop) actions are detected in the timer interrupt itself for safety.
+ * Check the number of turns made on the rotary encoder.
  */
-void loop()
-{   
-    // Check to see if the timer was automatically stopped due to the endstop being reached
-    if (timer_stop_reason == REASON_ENDSTOP) {
-        
-        // Reset the timer stop reason
-        INFO("timer was stopped automatically due to reaching endstop.")
-        timer_stop_reason = REASON_NONE;
-
-        // Change our mode to STOP
-        desired_mode = MODE_STOP;
-
-        // TODO: Set the enable state
-    }
-
+void check_rotary_turns()
+{
     // Was the rotary changed?
     int rotary_turns = get_rotary_turns();
     if (rotary_turns != 0) {
@@ -112,8 +101,8 @@ void loop()
         long adjustment = FEEDRATE_ADJUST_STEP_UM_SEC * rotary_turns;
 
         // Ensure we don't go below 0 feedrate or above the rapid feedrate
-        if ((long)desired_feedrate_precision_um_sec + adjustment <= 0) {
-            desired_feedrate_precision_um_sec = 0;
+        if ((long)desired_feedrate_precision_um_sec + adjustment <= FEEDRATE_ADJUST_STEP_UM_SEC) {
+            desired_feedrate_precision_um_sec = FEEDRATE_ADJUST_STEP_UM_SEC;
         } else if ((long)desired_feedrate_precision_um_sec + adjustment >= FEEDRATE_RAPID_UM_SEC) {
             desired_feedrate_precision_um_sec = FEEDRATE_RAPID_UM_SEC;
         } else {
@@ -122,24 +111,161 @@ void loop()
 
         hardware_configured = false;
     }
+}
+
+/**
+ * Check the buttons and update desired mode and desired direction as appropriate.
+ */
+void check_buttons()
+{
+    // Were any buttons pushed?
+    button_states_t button_states;
+    get_button_states(&button_states);
+
+    // Rotary button pushed?
+    if (button_states.rotary_press_count != 0) {
+        // Reset the precision feedrate
+        desired_feedrate_precision_um_sec = FEEDRATE_PRECISION_DEFAULT_UM_SEC;
+        hardware_configured = false;
+    }
+
+    // Fast-left button pushed?
+    if (button_states.fast_left_press_count != 0) {
+        desired_mode = MODE_RAPID;
+        desired_direction = DIRECTION_CW;
+        hardware_configured = false;
+    }
+
+    // Slow-left button pushed?
+    if (button_states.slow_left_press_count != 0) {
+        desired_mode = MODE_PRECISION;
+        desired_direction = DIRECTION_CW;
+        hardware_configured = false;
+    }
+
+    // Stop button pushed?
+    if (button_states.stop_press_count != 0) {
+        desired_mode = MODE_STOP;
+        hardware_configured = false;
+    }
+
+    // Slow-right button pushed?
+    if (button_states.slow_right_press_count != 0) {
+        desired_mode = MODE_PRECISION;
+        desired_direction = DIRECTION_CCW;
+        hardware_configured = false;
+    }
+
+    // Fast-right button pushed?
+    if (button_states.fast_right_press_count != 0) {
+        desired_mode = MODE_RAPID;
+        desired_direction = DIRECTION_CCW;
+        hardware_configured = false;
+    }
+}
+
+/**
+ * Update the LCD display.
+ */
+void update_lcd()
+{
+    // Update the display to reflect the current state
+    DEBUG("updating display contents")
+    lcd.clear();
+
+    // Write the top line
+    lcd.setCursor(0,0);
+    lcd.print("Rate: ");
+
+    // Write symbols describing the current state
+    lcd.setCursor(13, 0);
+    switch (desired_mode) {
+        
+        case MODE_ENDSTOP:
+            lcd.write('E');
+            lcd.write('S');
+            break;
+        
+        case MODE_STOP:
+            lcd.write(' ');
+            lcd.write(LCD_CHAR_STOP);
+            break;
+
+        case MODE_RAPID:
+            lcd.write(desired_direction == DIRECTION_CW ? LCD_CHAR_ARROW_LEFT : LCD_CHAR_ARROW_RIGHT);
+            lcd.write(desired_direction == DIRECTION_CW ? LCD_CHAR_ARROW_LEFT : LCD_CHAR_ARROW_RIGHT);
+            break;
+
+        case MODE_PRECISION:
+            lcd.write(' ');
+            lcd.write(desired_direction == DIRECTION_CW ? LCD_CHAR_ARROW_LEFT : LCD_CHAR_ARROW_RIGHT);
+            break;
+    }
+
+    lcd.setCursor(0, 1);
+    String feedrate_text = String((float)((float)desired_feedrate_precision_um_sec / (float)1000), 3) + " mm/s";
+    lcd.print(feedrate_text);
+}
+
+/**
+ * Check if the timer has been automatically stopped (I.e. without our command)
+ */
+void supervise_timer()
+{
+    // Check to see if the timer was automatically stopped due to the endstop being reached
+    if (timer_stop_reason == REASON_ENDSTOP) {
+        
+        // Reset the timer stop reason
+        INFO("timer was stopped automatically due to reaching endstop.")
+        timer_stop_reason = REASON_NONE;
+
+        // Change our mode to ENDSTOP
+        desired_mode = MODE_ENDSTOP;
+        hardware_configured = false;
+
+        return;
+    }
+
+    // Check to see if the timer was automatically stopped due to the stop button being pushed
+    if (timer_stop_reason == REASON_EMSTOP_PRESSED) {
+        
+        // Reset the timer stop reason
+        INFO("timer was stopped automatically due to emstop being observed in interrupt.")
+        timer_stop_reason = REASON_NONE;
+
+        // Change our mode to STOP
+        desired_mode = MODE_STOP;
+        hardware_configured = false;
+        
+        return;
+    }
+}
+
+/**
+ * Our main loop inspecs the deisred state (desired_ variables) and configures the timer/output pins if required.
+ * All operational halt (stop button, endstop) actions are detected in the timer interrupt itself for safety.
+ */
+void loop()
+{   
+    // Supervise the timer to ensure it hasn't been externally stopped
+    supervise_timer();
+
+    // Check the rotary encoder turns
+    check_rotary_turns();
+
+    // Check button presses
+    check_buttons();
 
     // Does the hardware need to be configured?
     if (!hardware_configured) {
 
         switch (desired_mode) {
-            
-            case MODE_STOP:
-
-                // TODO: Set the direction and enable state
-
-                // Stop
-                timer_stop();
-
-                break;
 
             case MODE_RAPID:
 
-                // TODO: Set the direction and enable state
+                // Set direction and enable
+                digitalWrite(PIN_DIRECTION, desired_direction == DIRECTION_CW ? HIGH : LOW);
+                digitalWrite(PIN_ENABLE, LOW);
 
                 // Move at the rapid feedrate
                 reconfigure_timer_for_feedrate(FEEDRATE_RAPID_UM_SEC);
@@ -148,45 +274,29 @@ void loop()
 
             case MODE_PRECISION:
 
-                // TODO: Set the direction and enable state
+                // Set direction and enable
+                digitalWrite(PIN_DIRECTION, desired_direction == DIRECTION_CW ? HIGH : LOW);
+                digitalWrite(PIN_ENABLE, LOW);
                 
                 // Move at the precision feedrate
                 reconfigure_timer_for_feedrate(desired_feedrate_precision_um_sec);
 
                 break;
-        }
-
-        // Update the display to reflect the current state
-        DEBUG("updating display contents")
-        lcd.clear();
-
-        // Write the top line
-        lcd.setCursor(0,0);
-        lcd.print("Rate: ");
-
-        // Write symbols describing the current state
-        lcd.setCursor(13, 0);
-        switch (desired_mode) {
             
-            case MODE_STOP:
-                lcd.write(' ');
-                lcd.write(LCD_CHAR_STOP);
-                break;
+            default:
 
-            case MODE_RAPID:
-                lcd.write(desired_direction == DIRECTION_LEFT ? LCD_CHAR_ARROW_LEFT : LCD_CHAR_ARROW_RIGHT);
-                lcd.write(desired_direction == DIRECTION_LEFT ? LCD_CHAR_ARROW_LEFT : LCD_CHAR_ARROW_RIGHT);
-                break;
+                // Set the direction and enable pins to their HIGH state
+                digitalWrite(PIN_DIRECTION, HIGH);
+                digitalWrite(PIN_ENABLE, HIGH);
 
-            case MODE_PRECISION:
-                lcd.write(' ');
-                lcd.write(desired_direction == DIRECTION_LEFT ? LCD_CHAR_ARROW_LEFT : LCD_CHAR_ARROW_RIGHT);
+                // Stop
+                timer_stop();
+
                 break;
         }
 
-        lcd.setCursor(0, 1);
-        String feedrate_text = String((float)((float)desired_feedrate_precision_um_sec / (float)1000), 3) + " mm/s";
-        lcd.print(feedrate_text);
+        // Update our LCD
+        update_lcd();
 
         // We're set up
         DEBUG("peripherals updated")
@@ -217,28 +327,28 @@ void handle_commands()
 
             // Change to Rapid Left movement
             desired_mode = MODE_RAPID;
-            desired_direction = DIRECTION_LEFT;
+            desired_direction = DIRECTION_CW;
             hardware_configured = false;
 
         } else if (commandString.startsWith("fr")) {
 
             // Change to Rapid Right movement
             desired_mode = MODE_RAPID;
-            desired_direction = DIRECTION_RIGHT;
+            desired_direction = DIRECTION_CCW;
             hardware_configured = false;
 
         } else if (commandString.startsWith("sl")) {
 
             // Change to Slow Left movement
             desired_mode = MODE_PRECISION;
-            desired_direction = DIRECTION_LEFT;
+            desired_direction = DIRECTION_CW;
             hardware_configured = false;
 
         } else if (commandString.startsWith("sr")) {
 
             // Change to Slow Right movement
             desired_mode = MODE_PRECISION;
-            desired_direction = DIRECTION_RIGHT;
+            desired_direction = DIRECTION_CCW;
             hardware_configured = false;
 
         } else if (commandString.startsWith("?")) {

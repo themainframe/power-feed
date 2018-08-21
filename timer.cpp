@@ -36,6 +36,18 @@ SIGNAL(TIMER2_COMPA_vect)
         return;
     }
 
+    // The emstop button will also prevent pulses from being output
+    if (digitalRead(PIN_STOP) == LOW) {
+        
+        // Set the timer stop reason - emstop
+        timer_stop_reason = REASON_EMSTOP_PRESSED;
+
+        // Stop the timer
+        timer_stop();
+
+        return;
+    }
+
     PORTD |= 0b00001000;
     delayMicroseconds(STEP_PULSE_WIDTH_US);
     PORTD &= ~0b00001000;

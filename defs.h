@@ -13,10 +13,6 @@ the original project by Chris Mower (https://github.com/kintekobo/millcode).
 #define PIN_DIRECTION       4
 #define PIN_ENABLE          5
 
-// LCD pins
-#define PIN_LCD_SDA         
-#define PIN_LCD_CLK         
-
 // Input pins
 #define PIN_FAST_LEFT       13
 #define PIN_SLOW_LEFT       12
@@ -40,11 +36,18 @@ the original project by Chris Mower (https://github.com/kintekobo/millcode).
 // The number of steps to move the table by 1um
 #define STEPS_PER_UM (STEPS_PER_ROTATION / UM_PER_ROTATION)
 
+// The default rate of the "precision move" in micrometers/second
+#define FEEDRATE_PRECISION_DEFAULT_UM_SEC 1000
+
 // The rate of the "rapid move" in micrometers/second
 #define FEEDRATE_RAPID_UM_SEC 7000
 
 // The rate change adjusted by each detent of the rotary encoder
 #define FEEDRATE_ADJUST_STEP_UM_SEC 50
+
+// The direction multiplier for the rotary encoder
+// Change to -1 if you can't swap the quadrature lines around easily to invert the direction
+#define ENCODER_DIRECTION 1
 
 // Custom character indexes for use on the LCD
 #define LCD_CHAR_ARROW_RIGHT 0
