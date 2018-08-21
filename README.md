@@ -7,6 +7,7 @@ _Ported from Chris Mower's original millcode project (https://github.com/kinteko
 ## Features
 
 * Rapid and Precision feedrates.
+* Iconographic display of current mode.
 * Control via physical buttons _or_ over the serial port/USB:
     * `stop` - All-stop
     * `fl` - Fast-left movement
