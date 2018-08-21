@@ -66,6 +66,9 @@ void setup()
     timer_init();
 
     // Initialise ports & pins
+    pinMode(PIN_ENABLE, OUTPUT);
+    pinMode(PIN_DIRECTION, OUTPUT);
+    pinMode(PIN_STEP, OUTPUT);
     pinMode(PIN_ENDSTOP, INPUT_PULLUP);
     pinMode(PIN_FAST_LEFT, INPUT_PULLUP);
     pinMode(PIN_FAST_RIGHT, INPUT_PULLUP);
@@ -236,7 +239,7 @@ void supervise_timer()
         // Change our mode to STOP
         desired_mode = MODE_STOP;
         hardware_configured = false;
-        
+
         return;
     }
 }
