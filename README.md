@@ -16,6 +16,7 @@ _Ported from Chris Mower's original millcode project (https://github.com/kinteko
     * `fr` - Fast-right movement
     * `1000` - Set the precision feedrate to 1000 micrometers per second.
 * Hardware timer-based pulse generation with endstop and safe-stop detection before pulse generation.
+* Endstop backoff (see `ALLOW_BACK_AWAY_FROM_ENDSTOP` in `defs.h`) - optionally allow moving in the opposite direction after triggering the endstop.
 
 ## Hardware
 

@@ -49,6 +49,10 @@ the original project by Chris Mower (https://github.com/kintekobo/millcode).
 // Change to -1 if you can't swap the quadrature lines around easily to invert the direction
 #define ENCODER_DIRECTION 1
 
+// Allow backing away from the endstop in the other direction
+// May sometimes be unsafe. Moving away from endstops manually is the alternative.
+#define ALLOW_BACK_AWAY_FROM_ENDSTOP 1
+
 // Custom character indexes for use on the LCD
 #define LCD_CHAR_ARROW_RIGHT 0
 #define LCD_CHAR_ARROW_LEFT 1

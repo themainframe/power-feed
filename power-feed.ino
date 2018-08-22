@@ -1,5 +1,6 @@
 #include <LiquidCrystal_I2C.h>
 #include "defs.h"
+#include "modes.h"
 #include "debug.h"
 #include "timer.h"
 #include "controls.h"
@@ -19,39 +20,21 @@ uint8_t char_arrow_right[8] = { 0x10, 0x18, 0x1C, 0x1E, 0x1E, 0x1C, 0x18, 0x10 }
 uint8_t char_arrow_left[8] = { 0x01, 0x03, 0x07, 0x0F, 0x0F, 0x07, 0x03, 0x01 };
 uint8_t char_stop[8] = { 0x00, 0x00, 0x0E, 0x1F, 0x1F, 0x1F, 0x0E, 0x00 };
 
-/**
- * Define the possible movement directions.
- */
-typedef enum {
-    DIRECTION_CW,
-    DIRECTION_CCW
-} direction_t;
-
-/**
- * Define the possible movement modes.
- */
-typedef enum {
-    MODE_PRECISION,
-    MODE_RAPID,
-    MODE_STOP,
-    MODE_ENDSTOP
-} mode_t;
-
 // The desired precision feedrate (um/sec)
 // The "rapid" feedrate is fixed and defined in defs.h
-volatile unsigned long desired_feedrate_precision_um_sec = FEEDRATE_PRECISION_DEFAULT_UM_SEC;
+unsigned long desired_feedrate_precision_um_sec = FEEDRATE_PRECISION_DEFAULT_UM_SEC;
 
-// The desired direction (default CW)
-volatile direction_t desired_direction = DIRECTION_CW;
+// The desired direction (default NONE)
+direction_t desired_direction = DIRECTION_NONE;
 
 // The desired mode (default STOP)
-volatile mode_t desired_mode = MODE_STOP;
+mode_t desired_mode = MODE_STOP;
 
 // The reason why the timer has been automatically stopped
-volatile extern timer_stop_reason_t timer_stop_reason;
+extern timer_stop_reason_t timer_stop_reason;
 
 // Has the hardware been configured according to the desired_* parameters above?
-volatile bool hardware_configured = false;
+bool hardware_configured = false;
 
 /**
  * Set up the system.

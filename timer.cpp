@@ -2,6 +2,7 @@
 #include "debug.h"
 #include "Arduino.h"
 #include "defs.h"
+#include "modes.h"
 
 /**
  * Define the available T2 prescaler configurations, ordered fastest rate to slowest rate.
@@ -14,10 +15,14 @@ const t2_prescaler_config_t t2_prescalers[T2_PRESCALER_NUM] = {
     { .tccr2b = 0b111, .denominator = 1024, .increment = 1000000 / (F_CPU / 1024) }
 };
 
-/**
- * The reason for the timer being stopped automatically.
- */
+// The reason for the timer being stopped automatically.
 volatile timer_stop_reason_t timer_stop_reason = REASON_NONE;
+
+// The direction we were moving when the timer was automatically stopped.
+volatile direction_t direction_on_timer_stop = DIRECTION_NONE;
+
+// Our current direction
+extern direction_t desired_direction;
 
 /**
  * Interrupt handler for the T2 Comparison match
@@ -27,13 +32,28 @@ SIGNAL(TIMER2_COMPA_vect)
     // Check the endstop hasn't been reached, if it has, stop the timer and set the stop reason flag
     if (digitalRead(PIN_ENDSTOP) == LOW) {
 
-        // Set the timer stop reason - reached endstop
-        timer_stop_reason = REASON_ENDSTOP;
+        // If we don't currently have a direction stored, remember the current one
+        if (direction_on_timer_stop == DIRECTION_NONE) {
+            direction_on_timer_stop = desired_direction;
+        }
 
-        // Stop the timer
-        timer_stop();
+        // If we're moving the same way, halt
+        if (!ALLOW_BACK_AWAY_FROM_ENDSTOP || desired_direction == direction_on_timer_stop) {
 
-        return;
+            // Stop the timer
+            timer_stop();
+
+            // Set the timer stop reason - reached endstop
+            timer_stop_reason = REASON_ENDSTOP;
+            
+            return;
+        }
+
+    } else {
+
+        // Clear the timer stop direction
+        direction_on_timer_stop = DIRECTION_NONE;
+
     }
 
     // The emstop button will also prevent pulses from being output
