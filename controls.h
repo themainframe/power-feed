@@ -3,22 +3,20 @@
 
 #include "Arduino.h"
 
-/**
- * A structure to store the state of all the buttons at once.
- */
-typedef struct
-{
-    unsigned int fast_left_press_count;
-    unsigned int slow_left_press_count;
-    unsigned int slow_right_press_count;
-    unsigned int fast_right_press_count;
-    unsigned int stop_press_count;
-    unsigned int rotary_press_count;
+#define BUTTON_FAST_LEFT 1
+#define BUTTON_SLOW_LEFT 2
+#define BUTTON_SLOW_RIGHT 3
+#define BUTTON_FAST_RIGHT 4
+#define BUTTON_STOP 5
+#define BUTTON_ROTARY 6
 
-} button_states_t;
+/**
+ * A type to store the state of the buttons.
+ */
+typedef uint8_t button_states_t;
 
 void attach_control_interrupts();
 int get_rotary_turns();
-void get_button_states(button_states_t* states);
+button_states_t get_button_states();
 
 #endif

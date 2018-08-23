@@ -7,14 +7,7 @@
 static volatile int rotary_turns = 0;
 
 // Keep track of button pushes
-static volatile button_states_t button_states = {
-    .fast_left_press_count = 0,
-    .slow_left_press_count = 0,
-    .slow_right_press_count = 0,
-    .fast_right_press_count = 0,
-    .stop_press_count = 0,
-    .rotary_press_count = 0
-};
+static volatile button_states_t button_states = 0;
 
 /**
  * ISR for buttons being pressed.
@@ -25,12 +18,12 @@ ISR(PCINT0_vect)
     delayMicroseconds(1000);
 
     // Capture the state of all buttons
-    button_states.fast_left_press_count |= digitalRead(PIN_FAST_LEFT) == LOW;
-    button_states.slow_left_press_count |= digitalRead(PIN_SLOW_LEFT) == LOW;
-    button_states.slow_right_press_count |= digitalRead(PIN_SLOW_RIGHT) == LOW;
-    button_states.fast_right_press_count |= digitalRead(PIN_FAST_RIGHT) == LOW;
-    button_states.stop_press_count |= digitalRead(PIN_STOP) == LOW;
-    button_states.rotary_press_count |= digitalRead(PIN_ROTARY_SW) == LOW;
+    button_states |= (digitalRead(PIN_FAST_LEFT) == LOW) << BUTTON_FAST_LEFT;
+    button_states |= (digitalRead(PIN_SLOW_LEFT) == LOW) << BUTTON_SLOW_LEFT;
+    button_states |= (digitalRead(PIN_SLOW_RIGHT) == LOW) << BUTTON_SLOW_RIGHT;
+    button_states |= (digitalRead(PIN_FAST_RIGHT) == LOW) << BUTTON_FAST_RIGHT;
+    button_states |= (digitalRead(PIN_ROTARY_SW) == LOW) << BUTTON_ROTARY;
+    button_states |= (digitalRead(PIN_STOP) == LOW) << BUTTON_STOP;
 }
 
 /**
@@ -38,16 +31,9 @@ ISR(PCINT0_vect)
  */
 ISR(PCINT2_vect)
 {
-    // Keep track of the last detent time to provide a little debouncing (mainly to limit the update rate)
-    static unsigned long last_rotary_detent_time_ms = 0;
-
     if (digitalRead(PIN_ROTARY_B) == LOW) {
-        unsigned long now = millis();
-        if (now - last_rotary_detent_time_ms > 5) {
-            // Increment or decrement rotary_turns based on which direction the rotary was turned
-            rotary_turns += (digitalRead(PIN_ROTARY_A) == HIGH ? 1 : -1) * ENCODER_DIRECTION;
-        }
-        last_rotary_detent_time_ms = now;
+        // Increment or decrement rotary_turns based on which direction the rotary was turned
+        rotary_turns += (digitalRead(PIN_ROTARY_A) == HIGH ? 1 : -1) * ENCODER_DIRECTION;
     }
 }
 
@@ -69,29 +55,18 @@ void attach_control_interrupts()
 }
 
 /**
- * This subroutine safely copies the state of the buttons into the destination memory
- * then resets the internal button states.
+ * This subroutine returns the state of the control buttons.
  */
-void get_button_states(button_states_t* states)
+button_states_t get_button_states()
 {
-    noInterrupts();
-    
-    // Copy the states first
-    states->fast_left_press_count = button_states.fast_left_press_count;
-    states->slow_left_press_count = button_states.slow_left_press_count;
-    states->slow_right_press_count = button_states.slow_right_press_count;
-    states->fast_right_press_count = button_states.fast_right_press_count;
-    states->stop_press_count = button_states.stop_press_count;
-    states->rotary_press_count = button_states.rotary_press_count;
-    
-    // Now reset them
-    button_states.fast_left_press_count = 0;
-    button_states.slow_left_press_count = 0;
-    button_states.slow_right_press_count = 0;
-    button_states.fast_right_press_count = 0;
-    button_states.stop_press_count = 0;
-    button_states.rotary_press_count = 0;
-    interrupts();
+    button_states_t button_states_atomic;
+
+    cli();
+    button_states_atomic = button_states;
+    button_states = 0;
+    sei();
+
+    return button_states_atomic;
 }
 
 /**
@@ -103,11 +78,11 @@ void get_button_states(button_states_t* states)
 int get_rotary_turns()
 {
     int rotary_turns_atomic;
-    
-    noInterrupts();
+
+    cli();
     rotary_turns_atomic = rotary_turns;
     rotary_turns = 0;
-    interrupts();
+    sei();
 
     return rotary_turns_atomic;
 }

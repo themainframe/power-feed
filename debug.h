@@ -22,7 +22,7 @@ debug information is generated.
 #define INFO_VAL(message, value) LOG_VAL("INF", message, value)
 #define ERROR(message) LOG("ERR", message)
 #define ERROR_VAL(message, value) LOG_VAL("ERR", message, value)
-#define LOG(type, message) Serial.print(millis()); Serial.print(" ["); Serial.print(type); Serial.print("] "); Serial.println(message);
-#define LOG_VAL(type, message, value) Serial.print(millis()); Serial.print(" ["); Serial.print(type); Serial.print("] "); Serial.print(message); Serial.print(": "); Serial.println(value);
+#define LOG(type, message) Serial.print("["); Serial.print(type); Serial.print("] "); Serial.println(message);
+#define LOG_VAL(type, message, value) Serial.print("["); Serial.print(type); Serial.print("] "); Serial.print(message); Serial.print(": "); Serial.println(value);
 
 #endif

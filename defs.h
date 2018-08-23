@@ -25,16 +25,16 @@ the original project by Chris Mower (https://github.com/kintekobo/millcode).
 #define PIN_ENDSTOP         2
 
 // The number of um travelled with one leadscrew rotation
-#define UM_PER_ROTATION 2000
+#define UM_PER_ROTATION 2000L
 
 // The width of a single step pulse in microseconds
-#define STEP_PULSE_WIDTH_US 4
+#define STEP_PULSE_WIDTH_US 4L
 
 // The total number of steps for one rotation of the motor
-#define STEPS_PER_ROTATION 12800
+#define STEPS_PER_ROTATION 12800L
 
 // The number of steps to move the table by 1um
-#define STEPS_PER_UM (STEPS_PER_ROTATION / UM_PER_ROTATION)
+#define STEPS_PER_MM (STEPS_PER_ROTATION / (UM_PER_ROTATION / 1000))
 
 // The default rate of the "precision move" in micrometers/second
 #define FEEDRATE_PRECISION_DEFAULT_UM_SEC 1000

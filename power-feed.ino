@@ -105,45 +105,44 @@ void check_rotary_turns()
 void check_buttons()
 {
     // Were any buttons pushed?
-    button_states_t button_states;
-    get_button_states(&button_states);
+    button_states_t button_states = get_button_states();
 
     // Rotary button pushed?
-    if (button_states.rotary_press_count != 0) {
+    if (button_states & (1 << BUTTON_ROTARY)) {
         // Reset the precision feedrate
         desired_feedrate_precision_um_sec = FEEDRATE_PRECISION_DEFAULT_UM_SEC;
         hardware_configured = false;
     }
 
     // Fast-left button pushed?
-    if (button_states.fast_left_press_count != 0) {
+    if (button_states & (1 << BUTTON_FAST_LEFT)) {
         desired_mode = MODE_RAPID;
         desired_direction = DIRECTION_CW;
         hardware_configured = false;
     }
 
     // Slow-left button pushed?
-    if (button_states.slow_left_press_count != 0) {
+    if (button_states & (1 << BUTTON_SLOW_LEFT)) {
         desired_mode = MODE_PRECISION;
         desired_direction = DIRECTION_CW;
         hardware_configured = false;
     }
 
     // Stop button pushed?
-    if (button_states.stop_press_count != 0) {
+    if (button_states & (1 << BUTTON_STOP)) {
         desired_mode = MODE_STOP;
         hardware_configured = false;
     }
 
     // Slow-right button pushed?
-    if (button_states.slow_right_press_count != 0) {
+    if (button_states & (1 << BUTTON_SLOW_RIGHT)) {
         desired_mode = MODE_PRECISION;
         desired_direction = DIRECTION_CCW;
         hardware_configured = false;
     }
 
     // Fast-right button pushed?
-    if (button_states.fast_right_press_count != 0) {
+    if (button_states & (1 << BUTTON_FAST_RIGHT)) {
         desired_mode = MODE_RAPID;
         desired_direction = DIRECTION_CCW;
         hardware_configured = false;

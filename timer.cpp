@@ -79,7 +79,7 @@ SIGNAL(TIMER2_COMPA_vect)
  */
 void timer_init() 
 {
-    noInterrupts();
+    cli();
 
     // Start timer 2 at value 0
     TCNT2 = 0;
@@ -91,13 +91,16 @@ void timer_init()
     // Timer is disabled initially
     TCCR2B = 0;
 
-    // Interrupt on timer compare match
-    TIMSK2 |= (1 << OCIE2A);
-
     // Clear and retrigger when timer reaches this value
     OCR2A = 0;
 
-    interrupts();
+    // Interrupt on timer compare match
+    TIMSK2 |= (1 << OCIE2A);
+
+    // Disable other timers that could introduce jitter into our generated signal
+    TIMSK0 &= ~(1 << TOIE0);
+
+    sei();
 }
 
 /**
@@ -105,10 +108,10 @@ void timer_init()
  */
 void timer_stop()
 {
-    noInterrupts();
+    cli();
     // Set T2 to have no clock source (Timer/Counter stopped)
     TCCR2B = 0;
-    interrupts();
+    sei();
 }
 
 /**
@@ -117,12 +120,12 @@ void timer_stop()
  * Returns true when the feedrate is successfully changed.
  * Returns false if the feedrate cannot be set due to hardware limitations.
  */
-bool reconfigure_timer_for_feedrate(unsigned long rate_us_sec)
+bool reconfigure_timer_for_feedrate(unsigned long rate_um_sec)
 {
-    unsigned long delay_us = 1000000 / (rate_us_sec * STEPS_PER_UM) - STEP_PULSE_WIDTH_US;
+    unsigned long delay_us = 1000000000L / (rate_um_sec * STEPS_PER_MM) - STEP_PULSE_WIDTH_US;
 
     // If we're just being asked to set to 0, just stop the timer
-    if (rate_us_sec == 0) {
+    if (rate_um_sec == 0) {
         INFO("zero feedrate requested: stopping")
         timer_stop();
         return true;
@@ -154,10 +157,10 @@ bool reconfigure_timer_for_feedrate(unsigned long rate_us_sec)
             INFO_VAL("feedrate delay variance (uS) will be", actual_delay - (long)delay_us)
             
             // Disable interrupts and reconfigure T2's prescaler and compare value
-            noInterrupts();
+            cli();
             TCCR2B = t2_prescalers[ps_idx].tccr2b;
             OCR2A = timer_ticks & 0xff;
-            interrupts();
+            sei();
             return true;
         }
     }
