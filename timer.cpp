@@ -21,6 +21,9 @@ volatile timer_stop_reason_t timer_stop_reason = REASON_NONE;
 // The direction we were moving when the timer was automatically stopped.
 volatile direction_t direction_on_timer_stop = DIRECTION_NONE;
 
+// Count endstop-triggered pulses (debounce)
+volatile int endstopped_pulses = 0;
+
 // Our current direction
 extern direction_t desired_direction;
 
@@ -29,8 +32,16 @@ extern direction_t desired_direction;
  */
 SIGNAL(TIMER2_COMPA_vect) 
 {
+    if (digitalRead(PIN_ENDSTOP) == HIGH) {
+        endstopped_pulses ++;
+    } else {
+        endstopped_pulses = 0;
+    }
+  
     // Check the endstop hasn't been reached, if it has, stop the timer and set the stop reason flag
-    if (digitalRead(PIN_ENDSTOP) == LOW) {
+    if (endstopped_pulses >= ENDSTOP_EXPOSURE_TICKS) {
+
+        endstopped_pulses = 0;
 
         // If we don't currently have a direction stored, remember the current one
         if (direction_on_timer_stop == DIRECTION_NONE) {

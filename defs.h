@@ -8,6 +8,20 @@ the original project by Chris Mower (https://github.com/kintekobo/millcode).
 #ifndef __DEFS_H__
 #define __DEFS_H__
 
+// Enable serial control
+#define SERIAL_COMMANDS 1
+
+// Enable the LCD display
+#define LCD 1
+
+// The type of LCD display that is being used
+// Only enable one of these options
+#define LCD_TYPE_PCF8574 0
+#define LCD_TYPE_I2C 1
+
+// The I2C address for the LCD
+#define LCD_I2C_ADDRESS 0x3F
+
 // Output pins
 #define PIN_STEP            3
 #define PIN_DIRECTION       4
@@ -47,7 +61,10 @@ the original project by Chris Mower (https://github.com/kintekobo/millcode).
 
 // The direction multiplier for the rotary encoder
 // Change to -1 if you can't swap the quadrature lines around easily to invert the direction
-#define ENCODER_DIRECTION 1
+#define ENCODER_DIRECTION -1
+
+// How many ticks we must see the endstop for before stopping
+#define ENDSTOP_EXPOSURE_TICKS 100
 
 // Allow backing away from the endstop in the other direction
 // May sometimes be unsafe. Moving away from endstops manually is the alternative.

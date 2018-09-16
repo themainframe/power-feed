@@ -1,9 +1,16 @@
-#include <LiquidCrystal_I2C.h>
 #include "defs.h"
 #include "modes.h"
 #include "debug.h"
 #include "timer.h"
 #include "controls.h"
+#if LCD
+    #if LCD_TYPE_PCF8574
+        #include <LiquidCrystal_PCF8574.h>
+    #endif  // LCD_TYPE_PCF8574
+    #if LCD_TYPE_I2C
+        #include <LiquidCrystal_I2C.h>
+    #endif // LCD_TYPE_I2C
+#endif // LCD
 
 /*
     power-feed - An Arduino-based single-axis milling machine power feed controller.
@@ -12,10 +19,18 @@
     (C) Damien Walsh <me@damow.net>
 */
 
-// Initialise LCD
-LiquidCrystal_I2C lcd(0x3F, 16, 2);
 
-// Define the appearance of the custom characters
+// Initialise LCD
+#if LCD
+    #if LCD_TYPE_PCF8574
+    LiquidCrystal_PCF8574 lcd(0x27);
+    #endif  // LCD_TYPE_PCF8574
+    #if LCD_TYPE_I2C
+    LiquidCrystal_I2C lcd(LCD_I2C_ADDRESS, 16, 2);
+    #endif // LCD_TYPE_I2C
+#endif // LCD
+
+// Define the appearance of the custom char§ers
 uint8_t char_arrow_right[8] = { 0x10, 0x18, 0x1C, 0x1E, 0x1E, 0x1C, 0x18, 0x10 };
 uint8_t char_arrow_left[8] = { 0x01, 0x03, 0x07, 0x0F, 0x0F, 0x07, 0x03, 0x01 };
 uint8_t char_stop[8] = { 0x00, 0x00, 0x0E, 0x1F, 0x1F, 0x1F, 0x0E, 0x00 };
@@ -63,8 +78,16 @@ void setup()
     pinMode(PIN_ROTARY_SW, INPUT_PULLUP);
 
     // Intialise the LCD
-    lcd.begin();
-	lcd.backlight();
+    #if LCD
+        #if LCD_TYPE_PCF8574
+        lcd.begin(16, 2);
+        lcd.setBacklight(0xff);
+        #endif  // LCD_TYPE_PCF8574
+        #if LCD_TYPE_I2C
+        lcd.begin();
+	    lcd.backlight();
+        #endif // LCD_TYPE_I2C
+    #endif // LCD
 
     // Register some custom characters with the LCD for later use
     lcd.createChar(LCD_CHAR_ARROW_LEFT, char_arrow_left);
@@ -249,7 +272,7 @@ void loop()
             case MODE_RAPID:
 
                 // Set direction and enable
-                digitalWrite(PIN_DIRECTION, desired_direction == DIRECTION_CW ? HIGH : LOW);
+                digitalWrite(PIN_DIRECTION, desired_direction == DIRECTION_CW ? LOW : HIGH);
                 digitalWrite(PIN_ENABLE, LOW);
 
                 // Move at the rapid feedrate
@@ -260,7 +283,7 @@ void loop()
             case MODE_PRECISION:
 
                 // Set direction and enable
-                digitalWrite(PIN_DIRECTION, desired_direction == DIRECTION_CW ? HIGH : LOW);
+                digitalWrite(PIN_DIRECTION, desired_direction == DIRECTION_CW ? LOW : HIGH);
                 digitalWrite(PIN_ENABLE, LOW);
                 
                 // Move at the precision feedrate
@@ -281,20 +304,24 @@ void loop()
         }
 
         // Update our LCD
+        #if LCD
         update_lcd();
+        #endif /* LCD */
 
         // We're set up
         DEBUG("peripherals updated")
         hardware_configured = true;
     }
 
-    handle_commands();
+    #if SERIAL_COMMANDS
+    handle_serial_commands();
+    #endif /* SERIAL_COMMANDS */
 }
 
 /**
  * Service any commands issued on the serial port.
  */
-void handle_commands()
+void handle_serial_commands()
 {
     // Service commands on the serial port
     if (Serial.available() > 0) {
